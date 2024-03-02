@@ -6,12 +6,12 @@ from authorization import get_google_credentials, get_strava_credentials
 from get_steps import get_steps
 from datetime import datetime, timedelta
 
-from src.get_activities import get_strava_activities
-from src.get_nutrition import get_nutrition
-from src.get_resting_ekg import get_resting_heart_rate
-from src.get_sleep import get_sleep
-from src.get_weight import get_weight
-from src.write_to_sheet import insert_data_to_sheet
+from get_activities import get_strava_activities
+from get_nutrition import get_nutrition
+from get_resting_ekg import get_resting_heart_rate
+from get_sleep import get_sleep
+from get_weight import get_weight
+from write_to_sheet import insert_data_to_sheet
 
 def main():
 
