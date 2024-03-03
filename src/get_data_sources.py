@@ -1,27 +1,32 @@
-from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from datetime import datetime, timedelta
+import pytz
 
 
-def list_data_sources(google_auth_token):
-    """
-    Lists all data sources available through the Google Fitness API for the authenticated user.
-
-    Parameters:
-    - google_auth_token (str): Google OAuth2 access token.
-
-    Returns:
-    - List of data sources.
-    """
-    # Create credentials from the provided Google OAuth2 access token
-    credentials = Credentials(token=google_auth_token)
+def print_datapoints_for_date(credentials, date):
+    # Convert the date to the required nanosecond format
+    timezone = pytz.timezone("Europe/Stockholm")  # e.g., "America/New_York"
+    start_dt = datetime(date.year, date.month, date.day, tzinfo=timezone)
+    end_dt = start_dt + timedelta(days=1)
+    start_time_ns = int(start_dt.timestamp()) * 1000000000
+    end_time_ns = int(end_dt.timestamp()) * 1000000000
 
     # Build the Fitness API service
     service = build('fitness', 'v1', credentials=credentials)
 
-    # Use the Fitness API to fetch available data sources
-    data_sources_list = service.users().dataSources().list(userId='me').execute()
+    # List all data sources
+    data_sources = service.users().dataSources().list(userId='me').execute()
 
-    # Extract and return the list of data sources
-    data_sources = data_sources_list.get('dataSource', [])
-    return data_sources
+    for source in data_sources.get('dataSource', []):
+        data_stream_id = source['dataStreamId']
+        print(f"Source: {data_stream_id}")
 
+        # Get dataset for the specific date range for this source
+        dataset_id = f"{start_time_ns}-{end_time_ns}"
+        dataset = service.users().dataSources().datasets().get(
+            userId='me', dataSourceId=data_stream_id, datasetId=dataset_id).execute()
+
+        # Print datapoints for this source
+        for point in dataset.get('point', []):
+            for value in point.get('value', []):
+                print(f"  {point['dataTypeName']}: {value.get('intVal', value.get('fpVal', 'No value'))}")

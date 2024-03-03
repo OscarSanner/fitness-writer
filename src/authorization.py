@@ -7,6 +7,7 @@ import json
 from flask import Flask, request, redirect
 import requests
 import json
+import time
 import threading
 import webbrowser
 import os
@@ -66,6 +67,7 @@ def get_google_credentials():
 
     return creds
 
+
 # ---------------------------- STRAVA ---------------------------- #
 app = Flask(__name__)
 
@@ -73,9 +75,11 @@ CONFIG_FILE = 'strava_config.json'
 TOKEN_FILE = 'strava_tokens.json'
 REDIRECT_URI = 'http://127.0.0.1:5000/exchange_token'
 
+
 def load_config():
     with open(CONFIG_FILE, 'r') as file:
         return json.load(file)
+
 
 def exchange_token_for_credentials(code, client_id, client_secret):
     url = 'https://www.strava.com/oauth/token'
@@ -94,6 +98,7 @@ def exchange_token_for_credentials(code, client_id, client_secret):
     else:
         print("Failed to exchange code for tokens.")
 
+
 @app.route('/exchange_token')
 def exchange_token():
     config = load_config()
@@ -107,17 +112,52 @@ def exchange_token():
     else:
         return "No code provided."
 
+
 def start_flask_server():
     app.run(port=5000)
 
+
+def refresh_strava_tokens(client_id, client_secret, refresh_token):
+    """Refresh the Strava access token using the refresh token."""
+    refresh_url = 'https://www.strava.com/oauth/token'
+    payload = {
+        'client_id': client_id,
+        'client_secret': client_secret,
+        'grant_type': 'refresh_token',
+        'refresh_token': refresh_token
+    }
+    response = requests.post(refresh_url, data=payload)
+    if response.ok:
+        return response.json()  # Contains new access_token, refresh_token, and expires_at
+    else:
+        print("Failed to refresh Strava tokens:", response.text)
+        return None
+
+
 def get_strava_credentials():
+    config = load_config()
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, 'r') as file:
             tokens = json.load(file)
-        return tokens
+
+        # Check if the access token has expired
+        if tokens.get('expires_at', 0) < time.time():
+            print("Access token has expired. Refreshing tokens...")
+            refreshed_tokens = refresh_strava_tokens(config['client_id'], config['client_secret'],
+                                                     tokens['refresh_token'])
+            if refreshed_tokens:
+                # Update the token file with the new tokens
+                with open(TOKEN_FILE, 'w') as file:
+                    json.dump(refreshed_tokens, file, indent=4)
+                print("Tokens refreshed successfully.")
+                return refreshed_tokens
+            else:
+                print("Failed to refresh tokens.")
+                return None
+        else:
+            return tokens
     else:
         threading.Thread(target=start_flask_server).start()
-        config = load_config()
         auth_url = f"https://www.strava.com/oauth/authorize?client_id={config['client_id']}&response_type=code&redirect_uri={REDIRECT_URI}&approval_prompt=force&scope=read,activity:read"
         webbrowser.open(auth_url)
         while not os.path.exists(TOKEN_FILE):
