@@ -1,10 +1,7 @@
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
-import os
 import pickle
-import requests
-import json
-from flask import Flask, request, redirect
+from flask import Flask, request
 import requests
 import json
 import time
@@ -53,7 +50,7 @@ def get_google_credentials():
             creds = pickle.load(token)
 
     # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
+    if not creds or not creds.valid or os.getenv("ACQUIRE_TOKEN") == "true":
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
