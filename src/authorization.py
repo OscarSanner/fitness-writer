@@ -1,3 +1,4 @@
+import pathlib
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import pickle
@@ -9,10 +10,13 @@ import threading
 import webbrowser
 import os
 
+PROJECT_ROOT = pathlib.Path(__file__).parent.resolve().parent.resolve()
+
 # ---------------------------- GOOGLE ---------------------------- #
 
 # Replace these with your client's information
-GOOGLE_CLIENT_SECRET_FILE = 'client_secret.json'
+GOOGLE_CLIENT_SECRET_FILE = os.path.join(PROJECT_ROOT, "auth_data", "google", "client_secret.json")
+GOOGLE_TOKEN_PICKLE_FILE = os.path.join(PROJECT_ROOT, "auth_data", "google", "token.pickle")
 GOOGLE_SCOPES = [
     'https://www.googleapis.com/auth/fitness.activity.read',
     'https://www.googleapis.com/auth/fitness.activity.write',
@@ -45,8 +49,8 @@ def get_google_credentials():
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
+    if os.path.exists(GOOGLE_TOKEN_PICKLE_FILE):
+        with open(GOOGLE_TOKEN_PICKLE_FILE, 'rb') as token:
             creds = pickle.load(token)
 
     # If there are no (valid) credentials available, let the user log in.
@@ -59,7 +63,7 @@ def get_google_credentials():
             creds = flow.run_local_server(port=0)
 
         # Save the credentials for the next run
-        with open('token.pickle', 'wb') as token:
+        with open(GOOGLE_TOKEN_PICKLE_FILE, 'wb') as token:
             pickle.dump(creds, token)
 
     return creds
@@ -68,8 +72,8 @@ def get_google_credentials():
 # ---------------------------- STRAVA ---------------------------- #
 app = Flask(__name__)
 
-CONFIG_FILE = 'strava_config.json'
-TOKEN_FILE = 'strava_tokens.json'
+CONFIG_FILE = os.path.join(PROJECT_ROOT, "auth_data", "strava", "strava_config.json")
+TOKEN_FILE = os.path.join(PROJECT_ROOT, "auth_data", "strava", "strava_tokens.json")
 REDIRECT_URI = 'http://127.0.0.1:5000/exchange_token'
 
 
@@ -130,6 +134,18 @@ def refresh_strava_tokens(client_id, client_secret, refresh_token):
         print("Failed to refresh Strava tokens:", response.text)
         return None
 
+
+def get_lifesum_credentials():
+    credentials_file_path = os.path.join(PROJECT_ROOT, "auth_data", "lifesum", "credentials.json")
+    
+    with open(credentials_file_path, 'r') as file:
+        credentials = json.load(file)
+    
+    return {
+        "base_api_url": credentials["base_api_url"],
+        "password": credentials["password"],
+        "username": credentials["username"]
+    }
 
 def get_strava_credentials():
     config = load_config()

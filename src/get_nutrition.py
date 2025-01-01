@@ -1,10 +1,12 @@
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from datetime import datetime, timedelta
-import pytz
+import os
+import pathlib
+from dotenv import load_dotenv
+from lifesum.api import Client
+from datetime import date, timedelta
+from lifesum.lifesum_requests import GetDiaryRequest, GetDiaryResponse
 
 
-def get_nutrition(date, google_auth_token):
+def get_nutrition(date, lifesum_username, lifesum_password, lifesum_api_endpoint):
     """
     Fetches nutrition information for the specified date using the Google Fitness API.
 
@@ -15,29 +17,14 @@ def get_nutrition(date, google_auth_token):
     Returns:
     - dict: Nutrition information including kcal, protein, carbs, and fat.
     """
+    PROJECT_ROOT = pathlib.Path(__file__).parent.resolve().parent.resolve()
+    token_file_path = os.path.join(PROJECT_ROOT, "auth_data", "lifesum", "token_file.json")
+    client = Client(base_url=lifesum_api_endpoint, password=lifesum_password, username=lifesum_username, token_file_path=token_file_path)
 
-    # Create credentials from the provided Google authorization token
-    credentials = Credentials(token=google_auth_token)
-
-    # Build the Fitness API service
-    service = build('fitness', 'v1', credentials=credentials)
-
-    # Define the time range for the query (whole day)
-    timezone = pytz.timezone("Europe/Stockholm")  # Adjust to your timezone
-    start_dt = datetime(date.year, date.month, date.day, tzinfo=timezone)
-    end_dt = start_dt + timedelta(days=1)
-
-    # Convert datetime to nanoseconds for the API
-    start_time_ns = int(start_dt.timestamp()) * 10 ** 9
-    end_time_ns = int(end_dt.timestamp()) * 10 ** 9
-
-    # Define the data source ID for nutrition
-    data_source = "raw:com.google.nutrition:com.sillens.shapeupclub:health_platform"
-
-    # Use the Fitness API to fetch nutrition data
-    dataset_id = f"{start_time_ns}-{end_time_ns}"
-    data = service.users().dataSources().datasets().get(
-        userId='me', dataSourceId=data_source, datasetId=dataset_id).execute()
+    client.login()
+    diary: GetDiaryResponse = client.get_diary(
+        GetDiaryRequest(date=date)
+    )
 
     nutrition_totals = {
         'kcal': 0,
@@ -46,21 +33,9 @@ def get_nutrition(date, google_auth_token):
         'fat': 0
     }
 
-    # Iterate over the points to sum up the nutrition information
-    for point in data.get('point', []):
-        for value in point['value']:
-            for nutrient_info in value.get('mapVal', []):
-                key = nutrient_info['key']
-                fpVal = nutrient_info['value'].get('fpVal', 0)
-
-                if 'calories' in key:
-                    nutrition_totals['kcal'] += fpVal
-                elif 'protein' in key:
-                    nutrition_totals['protein'] += fpVal
-                elif 'carbs.total' in key:
-                    nutrition_totals['carbs'] += fpVal
-                elif 'fat.total' in key:
-                    nutrition_totals['fat'] += fpVal
+    nutrition_totals['kcal'] = diary.get_total_nutrient("calories")
+    nutrition_totals['protein'] = diary.get_total_nutrient("protein")
+    nutrition_totals['carbs'] = diary.get_total_nutrient("carbs")
+    nutrition_totals['fat'] = diary.get_total_nutrient("fat")
 
     return nutrition_totals
-

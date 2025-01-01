@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-from authorization import get_google_credentials, get_strava_credentials
+from authorization import get_google_credentials, get_lifesum_credentials, get_strava_credentials
 from get_steps import get_steps
 from datetime import datetime, timedelta
 
@@ -19,13 +19,14 @@ def main():
 
     google_creds = get_google_credentials()
     strava_creds = get_strava_credentials()
+    lifesum_creds = get_lifesum_credentials()
 
     chosen_date = (datetime.now() - timedelta(days=1)).date()
 
     strava_activities = get_strava_activities(strava_creds, chosen_date)
     steps = get_steps(chosen_date, google_creds.token)
     weight = get_weight(chosen_date, google_creds.token)
-    nutrition = get_nutrition(chosen_date, google_creds.token)
+    nutrition = get_nutrition(chosen_date, lifesum_creds["username"], lifesum_creds["password"], lifesum_creds["base_api_url"])
     sleep = get_sleep(chosen_date, google_creds.token)
     hr = get_resting_heart_rate(chosen_date, google_creds.token)
 
