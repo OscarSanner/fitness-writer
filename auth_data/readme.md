@@ -2,13 +2,13 @@
 
 This folder must contain the following directories and files:
 
-google
-google/client_secret.json
-_This file is downloaded from the console.api.google.com. Go to project -> keys -> download (or something)_
+google  
+google/client_secret.json  
+_This file is downloaded from the console.api.google.com. Go to project -> keys -> download (or something)_  
 
-lifesum/
-lifesum/credentials.json
-*Example:*
+lifesum/  
+lifesum/credentials.json  
+*Example:*  
 ```json
 {
     "username": "example@example.com",
@@ -17,9 +17,9 @@ lifesum/credentials.json
 }
 ```
 
-strava/
-strava/config.json
-*Example:*
+strava/  
+strava/config.json  
+*Example:*  
 ```json
 {
     "client_id": "12345",
